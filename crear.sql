@@ -1,0 +1,1 @@
+-- Creación de tablas, secuencias y restricciones. Incluye los DROP TABLE correspondientes al inicio para facilitar la re-ejecución.

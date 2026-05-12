@@ -1,0 +1,1 @@
+-- Datos de ejemplo suficientes para que todas las consultas devuelvan resultados.
