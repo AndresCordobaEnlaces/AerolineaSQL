@@ -1,0 +1,90 @@
+--Todos los triggers con comentarios que justifiquen su existencia
+-- Guarda en el log los cambios de estado de un vuelo
+CREATE OR REPLACE TRIGGER TRG_LOG_ESTADO_VUELO
+AFTER UPDATE OF ESTADO ON VUELOS
+FOR EACH ROW
+WHEN (OLD.ESTADO <> NEW.ESTADO)
+BEGIN
+    INSERT INTO LOG_VUELOS (
+        ID_VUELO,
+        ESTADO_ANTES,
+        ESTADO_DESPUES
+    ) VALUES (
+        :OLD.ID_VUELO,
+        :OLD.ESTADO,
+        :NEW.ESTADO
+    );
+END;
+/
+
+-- Si un vuelo se cancela, se cancelan sus reservas
+CREATE OR REPLACE TRIGGER TRG_CANCELAR_RESERVAS
+AFTER UPDATE OF ESTADO ON VUELOS
+FOR EACH ROW
+WHEN (NEW.ESTADO = 'CANCELADO')
+BEGIN
+    UPDATE RESERVAS
+    SET ESTADO = 'CANCELADA'
+    WHERE ID_VUELO = :NEW.ID_VUELO;
+END;
+/
+
+-- No deja asignar una puerta en mantenimiento
+CREATE OR REPLACE TRIGGER TRG_VALIDAR_PUERTA
+BEFORE INSERT OR UPDATE OF ID_PUERTA ON VUELOS
+FOR EACH ROW
+DECLARE
+    v_estado PUERTAS_EMBARQUE.ESTADO%TYPE;
+BEGIN
+    SELECT ESTADO
+    INTO v_estado
+    FROM PUERTAS_EMBARQUE
+    WHERE ID_PUERTA = :NEW.ID_PUERTA;
+
+    IF v_estado = 'MANTENIMIENTO' THEN
+        RAISE_APPLICATION_ERROR(-20001, 'La puerta esta en mantenimiento');
+    END IF;
+END;
+/
+
+-- Cuando se asigna una puerta, pasa a ocupada
+CREATE OR REPLACE TRIGGER TRG_OCUPAR_PUERTA
+AFTER INSERT OR UPDATE OF ID_PUERTA ON VUELOS
+FOR EACH ROW
+BEGIN
+    UPDATE PUERTAS_EMBARQUE
+    SET ESTADO = 'OCUPADA'
+    WHERE ID_PUERTA = :NEW.ID_PUERTA;
+END;
+/
+
+-- No deja crear billetes de reservas canceladas
+CREATE OR REPLACE TRIGGER TRG_VALIDAR_BILLETE
+BEFORE INSERT OR UPDATE ON BILLETES
+FOR EACH ROW
+DECLARE
+    v_estado RESERVAS.ESTADO%TYPE;
+BEGIN
+    SELECT ESTADO
+    INTO v_estado
+    FROM RESERVAS
+    WHERE ID_RESERVA = :NEW.ID_RESERVA;
+
+    IF v_estado = 'CANCELADA' THEN
+        RAISE_APPLICATION_ERROR(-20002, 'No se puede crear un billete de una reserva cancelada');
+    END IF;
+END;
+/
+
+-- Controla el peso maximo del equipaje
+CREATE OR REPLACE TRIGGER TRG_VALIDAR_EQUIPAJE
+BEFORE INSERT OR UPDATE OF PESO, TIPO ON EQUIPAJES
+FOR EACH ROW
+BEGIN
+    IF :NEW.TIPO = 'MANO' AND :NEW.PESO > 10 THEN
+        RAISE_APPLICATION_ERROR(-20003, 'El equipaje de mano no puede superar 10 kg');
+    ELSIF :NEW.TIPO = 'FACTURADO' AND :NEW.PESO > 32 THEN
+        RAISE_APPLICATION_ERROR(-20004, 'El equipaje facturado no puede superar 32 kg');
+    END IF;
+END;
+/

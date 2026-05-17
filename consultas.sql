@@ -1,2 +1,109 @@
--- 1. Listar todos los vuelos con su aerolínea, avión, terminal y puerta de embarque.
+--Batería de consultas SQL comentadas, organizadas por temática
+-- 1. Listado de vuelos con aerolínea, avión y puerta.
+SELECT v.CODIGO_VUELO,
+       a.NOMBRE AS AEROLINEA,
+       av.MODELO AS AVION,
+       v.ORIGEN,
+       v.DESTINO,
+       v.FECHA_SALIDA,
+       p.CODIGO_PUERTA,
+       v.ESTADO
+FROM VUELOS v
+JOIN AEROLINEAS a ON v.ID_AEROLINEA = a.ID_AEROLINEA
+JOIN AVIONES av ON v.ID_AVION = av.ID_AVION
+JOIN PUERTAS_EMBARQUE p ON v.ID_PUERTA = p.ID_PUERTA
+ORDER BY v.FECHA_SALIDA;
 
+
+-- 2. Pasajeros del vuelo FR3001.
+SELECT pa.NOMBRE,
+       pa.APELLIDOS,
+       r.ESTADO AS ESTADO_RESERVA,
+       r.IMPORTE
+FROM RESERVAS r
+JOIN PASAJEROS pa ON r.ID_PASAJERO = pa.ID_PASAJERO
+JOIN VUELOS v ON r.ID_VUELO = v.ID_VUELO
+WHERE v.CODIGO_VUELO = 'FR3001';
+
+
+-- 3. Número de vuelos por aerolínea.
+SELECT a.NOMBRE AS AEROLINEA,
+       COUNT(v.ID_VUELO) AS TOTAL_VUELOS
+FROM AEROLINEAS a
+LEFT JOIN VUELOS v ON a.ID_AEROLINEA = v.ID_AEROLINEA
+GROUP BY a.NOMBRE
+ORDER BY TOTAL_VUELOS DESC;
+
+
+-- 4. Aerolíneas con más de un vuelo.
+SELECT a.NOMBRE AS AEROLINEA,
+       COUNT(v.ID_VUELO) AS TOTAL_VUELOS
+FROM AEROLINEAS a
+JOIN VUELOS v ON a.ID_AEROLINEA = v.ID_AEROLINEA
+GROUP BY a.NOMBRE
+HAVING COUNT(v.ID_VUELO) > 1;
+
+
+-- 5. Dinero total de reservas por vuelo.
+SELECT v.CODIGO_VUELO,
+       v.ORIGEN,
+       v.DESTINO,
+       SUM(r.IMPORTE) AS TOTAL_RESERVAS
+FROM VUELOS v
+JOIN RESERVAS r ON v.ID_VUELO = r.ID_VUELO
+GROUP BY v.CODIGO_VUELO, v.ORIGEN, v.DESTINO
+ORDER BY TOTAL_RESERVAS DESC;
+
+
+-- 6. Peso medio del equipaje por vuelo.
+SELECT v.CODIGO_VUELO,
+       v.ORIGEN,
+       v.DESTINO,
+       AVG(e.PESO) AS PESO_MEDIO
+FROM VUELOS v
+JOIN RESERVAS r ON v.ID_VUELO = r.ID_VUELO
+JOIN EQUIPAJES e ON r.ID_RESERVA = e.ID_RESERVA
+GROUP BY v.CODIGO_VUELO, v.ORIGEN, v.DESTINO
+ORDER BY PESO_MEDIO DESC;
+
+
+-- 7. Precio máximo y mínimo de los vuelos.
+SELECT MAX(PRECIO) AS PRECIO_MAXIMO,
+       MIN(PRECIO) AS PRECIO_MINIMO
+FROM VUELOS;
+
+
+-- 8. Vuelos con precio superior al precio medio.
+SELECT CODIGO_VUELO,
+       ORIGEN,
+       DESTINO,
+       PRECIO
+FROM VUELOS
+WHERE PRECIO > (
+    SELECT AVG(PRECIO)
+    FROM VUELOS
+)
+ORDER BY PRECIO DESC;
+
+
+-- 9. Pasajeros con más de una reserva.
+SELECT p.NOMBRE,
+       p.APELLIDOS,
+       COUNT(r.ID_RESERVA) AS TOTAL_RESERVAS
+FROM PASAJEROS p
+JOIN RESERVAS r ON p.ID_PASAJERO = r.ID_PASAJERO
+GROUP BY p.NOMBRE, p.APELLIDOS
+HAVING COUNT(r.ID_RESERVA) > 1;
+
+
+-- 10. Empleados con su turno y terminal.
+SELECT e.NOMBRE,
+       e.APELLIDOS,
+       e.PUESTO,
+       t.NOMBRE AS TERMINAL,
+       te.FECHA_TURNO,
+       te.TURNO
+FROM EMPLEADOS e
+JOIN TERMINALES t ON e.ID_TERMINAL = t.ID_TERMINAL
+JOIN TURNOS_EMPLEADOS te ON e.ID_EMPLEADO = te.ID_EMPLEADO
+ORDER BY te.FECHA_TURNO, te.TURNO;
